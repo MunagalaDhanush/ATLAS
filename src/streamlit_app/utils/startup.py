@@ -1,5 +1,5 @@
 """
-ATLAS startup guard — diagnostic version with verbose logging.
+ATLAS startup guard — runs the full pipeline on first deploy if atlas.duckdb is absent.
 Data generation is inlined to avoid importlib path ambiguity on Streamlit Cloud.
 """
 
@@ -83,16 +83,16 @@ def _generate_data(root: Path) -> int:
             issue = random.choice(ISSUES)
             amt = round(random.uniform(50, 5000), 2)
             rows.append({
-                "customer_id":      cid,
-                "call_id":          str(uuid.uuid4()),
-                "call_timestamp":   ts.strftime("%Y-%m-%d %H:%M:%S"),
+                "customer_id":       cid,
+                "call_id":           str(uuid.uuid4()),
+                "call_timestamp":    ts.strftime("%Y-%m-%d %H:%M:%S"),
                 "call_duration_sec": random.randint(60, 900),
-                "ivr_resolution":   random.random() > 0.7,
-                "agent_resolution": random.random() > (0.8 if is_friction else 0.4),
-                "product_involved": prod,
-                "issue_category":   issue,
-                "transcript_text":  make_text(CALL_TEMPLATES, issue, prod, amt),
-                "region":           random.choice(REGIONS),
+                "ivr_resolution":    random.random() > 0.7,
+                "agent_resolution":  random.random() > (0.8 if is_friction else 0.4),
+                "product_involved":  prod,
+                "issue_category":    issue,
+                "transcript_text":   make_text(CALL_TEMPLATES, issue, prod, amt),
+                "region":            random.choice(REGIONS),
             })
     pd.DataFrame(rows).to_csv(str(raw_dir / "call_center_logs.csv"), index=False)
 
@@ -120,46 +120,46 @@ def _generate_data(root: Path) -> int:
             })
     pd.DataFrame(rows).to_csv(str(raw_dir / "branch_visits.csv"), index=False)
 
-    # ── Online events ──────────────────────────────────────────────────────────
+    # ── Online events (k > N_CUSTOMERS — use choices for replacement sampling) ─
     rows = []
     EVENT_TYPES = ["page_view", "error_page", "form_abandon", "chat_initiated", "logout_frustration"]
-    for cid in random.sample(all_ids, 11000):
+    for cid in random.choices(all_ids, k=11000):
         rows.append({
-            "customer_id":    cid,
-            "session_id":     str(uuid.uuid4()),
+            "customer_id":     cid,
+            "session_id":      str(uuid.uuid4()),
             "event_timestamp": rand_ts().strftime("%Y-%m-%d %H:%M:%S"),
-            "event_type":     random.choice(EVENT_TYPES),
-            "page_name":      random.choice(["account", "payments", "transfers", "disputes", "settings"]),
+            "event_type":      random.choice(EVENT_TYPES),
+            "page_name":       random.choice(["account", "payments", "transfers", "disputes", "settings"]),
             "product_involved": random.choice(PRODUCTS),
             "session_resolved": random.random() > 0.4,
-            "region":         random.choice(REGIONS),
+            "region":          random.choice(REGIONS),
         })
     pd.DataFrame(rows).to_csv(str(raw_dir / "online_events.csv"), index=False)
 
-    # ── Mobile events ──────────────────────────────────────────────────────────
+    # ── Mobile events (k > N_CUSTOMERS — use choices for replacement sampling) ─
     rows = []
     MOB_TYPES = ["app_crash", "feature_error", "in_app_feedback", "chat_initiated", "force_close"]
-    for cid in random.sample(all_ids, 10300):
+    for cid in random.choices(all_ids, k=10300):
         is_friction = cid in friction_ids
         prod = random.choice(PRODUCTS)
         issue = random.choice(ISSUES)
         amt = round(random.uniform(50, 3000), 2)
         rows.append({
-            "customer_id":    cid,
-            "event_id":       str(uuid.uuid4()),
+            "customer_id":     cid,
+            "event_id":        str(uuid.uuid4()),
             "event_timestamp": rand_ts().strftime("%Y-%m-%d %H:%M:%S"),
-            "event_type":     random.choice(MOB_TYPES),
-            "feature_name":   random.choice(["payments", "transfers", "balance", "disputes", "profile"]),
+            "event_type":      random.choice(MOB_TYPES),
+            "feature_name":    random.choice(["payments", "transfers", "balance", "disputes", "profile"]),
             "product_involved": prod,
-            "feedback_text":  make_text(MOBILE_TEMPLATES, issue, prod, amt) if is_friction else "",
-            "resolved_flag":  not is_friction or random.random() > 0.7,
-            "region":         random.choice(REGIONS),
+            "feedback_text":   make_text(MOBILE_TEMPLATES, issue, prod, amt) if is_friction else "",
+            "resolved_flag":   not is_friction or random.random() > 0.7,
+            "region":          random.choice(REGIONS),
         })
     pd.DataFrame(rows).to_csv(str(raw_dir / "mobile_events.csv"), index=False)
 
     # ── NPS surveys ────────────────────────────────────────────────────────────
     rows = []
-    for cid in random.sample(all_ids, 10000):
+    for cid in random.choices(all_ids, k=10000):
         is_friction = cid in friction_ids
         prod = random.choice(PRODUCTS)
         issue = random.choice(ISSUES)
@@ -189,51 +189,25 @@ def ensure_data_ready():
     root = Path(__file__).resolve().parents[3]
     db_path = root / "data" / "atlas.duckdb"
 
-    # Log environment
-    st.write(f"DEBUG: root = {root}")
-    st.write(f"DEBUG: db_path = {db_path}")
-    st.write(f"DEBUG: db exists = {db_path.exists()}")
-    st.write(f"DEBUG: cwd = {os.getcwd()}")
-
-    # Write permission check
-    test_file = root / "data" / "test_write.txt"
-    try:
-        test_file.write_text("test")
-        test_file.unlink()
-        st.write("DEBUG: Write permission OK")
-    except Exception as e:
-        st.write(f"DEBUG: NO WRITE PERMISSION - {e}")
-
     needs_setup = False
     if not db_path.exists():
-        st.write("DEBUG: DB does not exist - running pipeline")
         needs_setup = True
     else:
-        st.write("DEBUG: DB exists - checking tables")
         try:
             con = duckdb.connect(str(db_path))
-            tables = con.execute("SHOW ALL TABLES").df()
-            st.write(f"DEBUG: Tables found: {tables['name'].tolist()}")
-            try:
-                count = con.execute(
-                    "SELECT COUNT(*) FROM analytics.friction_hotspots"
-                ).fetchone()[0]
-                st.write(f"DEBUG: friction_hotspots count = {count}")
-                if count == 0:
-                    needs_setup = True
-            except Exception as e:
-                st.write(f"DEBUG: friction_hotspots error = {e}")
-                needs_setup = True
+            count = con.execute(
+                "SELECT COUNT(*) FROM analytics.friction_hotspots"
+            ).fetchone()[0]
             con.close()
-        except Exception as e:
-            st.write(f"DEBUG: DB connection error = {e}")
+            if count == 0:
+                needs_setup = True
+        except Exception:
             needs_setup = True
 
     if not needs_setup:
-        st.write("DEBUG: Data ready - skipping pipeline")
         return
 
-    with st.spinner("Building pipeline..."):
+    with st.spinner("Building ATLAS data pipeline — takes about 90 seconds..."):
         original_dir = os.getcwd()
         os.chdir(str(root))
         sys.path.insert(0, str(root))
@@ -244,53 +218,36 @@ def ensure_data_ready():
 
         def run_module(path, label):
             import importlib.util
-            st.write(f"Running: {label}")
+            st.write(label)
+            spec = importlib.util.spec_from_file_location("module", str(root / path))
+            mod = importlib.util.module_from_spec(spec)
             try:
-                spec = importlib.util.spec_from_file_location(
-                    "module", str(root / path)
-                )
-                mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                st.write(f"OK: {label}")
             except Exception as e:
-                st.write(f"FAILED: {label} -- {e}")
+                st.error(f"Pipeline step failed: {label} — {e}")
+                import traceback
+                st.code(traceback.format_exc())
                 raise
 
         try:
-            # Step 1: inline generation — no importlib, path is guaranteed
             st.write("Generating synthetic data...")
-            csv_count = _generate_data(root)
-            st.write(f"OK: Synthetic data -- {csv_count} CSVs written to {root / 'data' / 'raw'}")
+            _generate_data(root)
 
-            run_module("src/02_etl_pipeline/load_duckdb.py", "ETL")
-            run_module("src/03_journey_stitcher/journey_stitcher.py", "Journeys")
-            run_module("src/04_friction_detector/friction_detector.py", "Friction")
-            run_module("src/06_kpi_monitor/kpi_aggregator.py", "KPI aggregator")
-            run_module("src/06_kpi_monitor/kpi_arima_monitor.py", "ARIMA")
-            run_module("src/07_friction_scoring/friction_scorer.py", "Scoring")
-            run_module("src/10_dashboard/export_for_powerbi.py", "Dashboard export")
+            run_module("src/02_etl_pipeline/load_duckdb.py",       "Running ETL pipeline...")
+            run_module("src/03_journey_stitcher/journey_stitcher.py", "Building customer journeys...")
+            run_module("src/04_friction_detector/friction_detector.py", "Detecting friction episodes...")
+            run_module("src/06_kpi_monitor/kpi_aggregator.py",     "Aggregating KPIs...")
+            run_module("src/06_kpi_monitor/kpi_arima_monitor.py",  "Running ARIMA forecasts...")
+            run_module("src/07_friction_scoring/friction_scorer.py", "Scoring friction hotspots...")
+            run_module("src/10_dashboard/export_for_powerbi.py",   "Preparing dashboard data...")
             _create_llm_fallback(str(db_path))
-            st.write("Pipeline complete")
 
-            # Post-pipeline verification
-            con = duckdb.connect(str(db_path))
-            try:
-                tables = con.execute("SHOW ALL TABLES").df()
-                st.write(f"DEBUG: Final tables = {tables['name'].tolist()}")
-                hs_count = con.execute(
-                    "SELECT COUNT(*) FROM analytics.friction_hotspots"
-                ).fetchone()[0]
-                st.write(f"DEBUG: friction_hotspots rows = {hs_count}")
-            finally:
-                con.close()
-
-        except Exception as e:
-            st.error(f"Pipeline failed: {e}")
-            import traceback
-            st.code(traceback.format_exc())
+        except Exception:
+            return
         finally:
             os.chdir(original_dir)
 
+    st.success("ATLAS ready.")
     st.rerun()
 
 
