@@ -14,14 +14,27 @@ GLOBAL_CSS = """
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
+header [data-testid="stToolbar"] {visibility: hidden;}
 .stDeployButton {visibility: hidden;}
 .stAppToolbar {display: none;}
 
 /* Sidebar toggle must remain visible despite header being hidden */
 [data-testid="collapsedControl"] {
-    display: flex !important;
     visibility: visible !important;
+    opacity: 1 !important;
+    display: flex !important;
+    background: #0D1526 !important;
+    border: 1px solid rgba(77,166,255,0.3) !important;
+    border-radius: 0 8px 8px 0 !important;
+}
+[data-testid="collapsedControl"] button {
+    visibility: visible !important;
+    opacity: 1 !important;
     color: #4DA6FF !important;
+}
+[data-testid="collapsedControl"] svg {
+    visibility: visible !important;
+    fill: #4DA6FF !important;
 }
 
 /* Page background */
