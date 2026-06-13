@@ -57,9 +57,9 @@ st.markdown(section_header("Theme Overview"), unsafe_allow_html=True)
 cols = st.columns(min(4, len(themes)))
 for i, (_, row) in enumerate(themes.head(4).iterrows()):
     with cols[i % 4]:
-        sent  = float(row["avg_sentiment_score"])
-        unres = float(row.get("unresolved_rate", 0))
-        count = int(row["event_count"])
+        sent  = float(row["avg_sentiment"])
+        unres = float(row.get("pct_unresolved", 0))
+        count = int(row["count"])
         color = "#E05555" if sent < -0.3 else "#5DCAA5" if sent > 0.3 else "#F0A500"
         st.markdown(f"""
         <div class="atlas-card" style="

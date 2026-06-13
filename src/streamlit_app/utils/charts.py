@@ -133,14 +133,14 @@ def priority_bar(df: pd.DataFrame, top_n: int = 15) -> go.Figure:
 
 # ── Theme bar chart ───────────────────────────────────────────────────────────
 def theme_bar(df: pd.DataFrame) -> go.Figure:
-    d = df.sort_values("event_count", ascending=True)
+    d = df.sort_values("count", ascending=True)
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=d["event_count"], y=d["theme"],
+        x=d["count"], y=d["theme"],
         orientation="h",
         name="Count",
         marker=dict(color=PRIMARY, opacity=0.8),
-        text=d["event_count"],
+        text=d["count"],
         textposition="inside",
         textfont=dict(color=TEXT_MAIN, size=10),
     ))
@@ -346,17 +346,17 @@ def kpi_multi_line(df: pd.DataFrame, metrics: list[str], style: str = "Line") ->
 
 # ── Theme + sentiment combo chart ─────────────────────────────────────────────
 def theme_sentiment_combo(df: pd.DataFrame) -> go.Figure:
-    d = df.sort_values("event_count", ascending=False)
+    d = df.sort_values("count", ascending=False)
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=d["theme"], y=d["event_count"],
+        x=d["theme"], y=d["count"],
         name="Event Count", marker=dict(color=PRIMARY, opacity=0.7),
         yaxis="y1",
     ))
     sent_colors = [SUCCESS if s > 0.3 else DANGER if s < -0.3 else WARNING
-                   for s in d["avg_sentiment_score"]]
+                   for s in d["avg_sentiment"]]
     fig.add_trace(go.Scatter(
-        x=d["theme"], y=d["avg_sentiment_score"],
+        x=d["theme"], y=d["avg_sentiment"],
         name="Avg Sentiment", mode="markers+lines",
         marker=dict(color=sent_colors, size=10),
         line=dict(color="rgba(255,255,255,0.2)", width=1),
