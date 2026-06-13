@@ -8,8 +8,6 @@ secrets/
 data/raw/*.csv
 data/processed/*.csv
 data/dashboard/*.csv
-data/*.duckdb
-data/*.duckdb.wal
 
 # Keep directory structure intact for Streamlit Cloud cold-start
 !data/.gitkeep
