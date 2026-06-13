@@ -52,7 +52,7 @@ def get_friction_hotspots() -> pd.DataFrame:
 def get_llm_theme_summary() -> pd.DataFrame:
     with _con() as con:
         return con.execute(
-            "SELECT * FROM analytics.llm_theme_summary ORDER BY event_count DESC"
+            "SELECT * FROM analytics.llm_theme_summary ORDER BY count DESC"
         ).df()
 
 
