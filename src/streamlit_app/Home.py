@@ -20,8 +20,11 @@ from utils.atlas_style import (
 from utils.db import get_kpi_alerts, get_kpi_weekly, get_friction_hotspots, get_journey_stats
 from utils.charts import kpi_multi_line
 from utils.ai import generate_week_story
+from utils.startup import ensure_data_ready
 
 _ENV_PATH = _APP_DIR.parents[1] / ".env"
+
+ensure_data_ready()
 
 st.set_page_config(
     page_title="ATLAS — Executive Dashboard",
