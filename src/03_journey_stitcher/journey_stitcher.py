@@ -12,7 +12,6 @@ Output:
   - CSV:    data/processed/customer_journeys.csv
 """
 
-import os
 import sys
 import logging
 from pathlib import Path
@@ -26,8 +25,9 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-DB_PATH      = os.getenv("DB_PATH", "data/atlas.duckdb")
-OUT_CSV      = Path("data/processed/customer_journeys.csv")
+_ROOT   = Path(__file__).resolve().parents[2]
+DB_PATH = str(_ROOT / "data" / "atlas.duckdb")
+OUT_CSV = _ROOT / "data" / "processed" / "customer_journeys.csv"
 WINDOW_HOURS = 72
 
 # ── Load ───────────────────────────────────────────────────────────────────────

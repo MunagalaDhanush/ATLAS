@@ -12,7 +12,6 @@ Prints:
   - Top 3 friction-prone products, regions, channel sequences
 """
 
-import os
 import logging
 from pathlib import Path
 
@@ -26,9 +25,10 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-DB_PATH  = os.getenv("DB_PATH", "data/atlas.duckdb")
-IN_CSV   = Path("data/processed/customer_journeys.csv")
-OUT_CSV  = Path("data/processed/friction_flags.csv")
+_ROOT   = Path(__file__).resolve().parents[2]
+DB_PATH = str(_ROOT / "data" / "atlas.duckdb")
+IN_CSV  = _ROOT / "data" / "processed" / "customer_journeys.csv"
+OUT_CSV = _ROOT / "data" / "processed" / "friction_flags.csv"
 
 
 # ── Load ───────────────────────────────────────────────────────────────────────

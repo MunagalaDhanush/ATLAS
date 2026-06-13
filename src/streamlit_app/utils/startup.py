@@ -5,66 +5,92 @@ Called once at Home.py startup before any page renders.
 
 
 def ensure_data_ready():
-    """
-    Checks if atlas.duckdb exists and has data.
-    If not, runs the full data generation + ETL pipeline automatically.
-    Called once at app startup from Home.py.
-    """
     import duckdb
-    import os
+    import streamlit as st
     from pathlib import Path
 
-    # Find project root
     root = Path(__file__).resolve().parents[3]
     db_path = root / "data" / "atlas.duckdb"
 
-    # Check if DB exists and has data
-    if db_path.exists():
+    needs_setup = False
+    if not db_path.exists():
+        needs_setup = True
+    else:
         try:
             con = duckdb.connect(str(db_path))
             count = con.execute(
-                "SELECT COUNT(*) FROM analytics.customer_event_log"
+                "SELECT COUNT(*) FROM analytics.friction_hotspots"
             ).fetchone()[0]
             con.close()
-            if count > 0:
-                return  # Data exists, nothing to do
+            if count == 0:
+                needs_setup = True
         except Exception:
-            pass
+            needs_setup = True
 
-    # Data missing — run pipeline
-    import streamlit as st
+    if not needs_setup:
+        return
+
     with st.spinner(
-        "First run detected — generating data and building analytics "
-        "pipeline. This takes about 2 minutes..."
+        "First run: building ATLAS data pipeline. "
+        "Takes about 90 seconds..."
     ):
-        # Create data directory
+        import sys
+        import os
+
+        # Set working directory to project root for all scripts
+        original_dir = os.getcwd()
+        os.chdir(str(root))
+        sys.path.insert(0, str(root))
+
+        # Create directories
         (root / "data" / "raw").mkdir(parents=True, exist_ok=True)
         (root / "data" / "processed").mkdir(parents=True, exist_ok=True)
         (root / "data" / "dashboard").mkdir(parents=True, exist_ok=True)
 
-        import subprocess, sys
-        scripts = [
-            "generate_synthetic_data.py",
-            "src/02_etl_pipeline/load_duckdb.py",
-            "src/03_journey_stitcher/journey_stitcher.py",
-            "src/04_friction_detector/friction_detector.py",
-            "src/06_kpi_monitor/kpi_aggregator.py",
-            "src/06_kpi_monitor/kpi_arima_monitor.py",
-            "src/07_friction_scoring/friction_scorer.py",
-            "src/10_dashboard/export_for_powerbi.py",
-        ]
-        for script in scripts:
-            subprocess.run(
-                [sys.executable, str(root / script)],
-                cwd=str(root),
-                capture_output=True,
-            )
+        try:
+            import importlib.util
 
-        # Skip LLM theme extractor on cold start
-        # (saves Groq API quota — uses cached fallback)
-        _create_llm_fallback(con_path=str(db_path))
+            def run_module(path):
+                spec = importlib.util.spec_from_file_location(
+                    "module", str(root / path)
+                )
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
 
-    st.success("Data ready. Loading dashboard...")
+            st.write("Generating synthetic data...")
+            run_module("generate_synthetic_data.py")
+
+            st.write("Running ETL pipeline...")
+            run_module("src/02_etl_pipeline/load_duckdb.py")
+
+            st.write("Building customer journeys...")
+            run_module("src/03_journey_stitcher/journey_stitcher.py")
+
+            st.write("Detecting friction episodes...")
+            run_module("src/04_friction_detector/friction_detector.py")
+
+            st.write("Aggregating KPIs...")
+            run_module("src/06_kpi_monitor/kpi_aggregator.py")
+
+            st.write("Running ARIMA forecasts...")
+            run_module("src/06_kpi_monitor/kpi_arima_monitor.py")
+
+            st.write("Scoring friction hotspots...")
+            run_module("src/07_friction_scoring/friction_scorer.py")
+
+            st.write("Preparing dashboard data...")
+            run_module("src/10_dashboard/export_for_powerbi.py")
+
+            # Skip real Groq on cold start — saves API quota
+            _create_llm_fallback(str(db_path))
+
+        except Exception as e:
+            st.error(f"Pipeline error: {e}")
+            raise
+        finally:
+            os.chdir(original_dir)
+
+    st.success("ATLAS ready.")
     st.rerun()
 
 
@@ -93,10 +119,10 @@ def _create_llm_fallback(con_path: str):
             CREATE TABLE IF NOT EXISTS analytics.llm_theme_summary AS
             SELECT
                 theme,
-                COUNT(*) as count,
-                AVG(sentiment_score) as avg_sentiment,
+                COUNT(*) as event_count,
+                AVG(sentiment_score) as avg_sentiment_score,
                 AVG(CASE WHEN unresolved_issue THEN 1.0 ELSE 0.0 END)
-                    as pct_unresolved
+                    as unresolved_rate
             FROM analytics.llm_insights
             GROUP BY theme
         """)

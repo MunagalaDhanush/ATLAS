@@ -5,7 +5,6 @@ Fires alert if abs(pct_change from current to forecast) > 10%.
 Writes results to analytics.kpi_alerts.
 """
 
-import os
 import logging
 import warnings
 from pathlib import Path
@@ -21,7 +20,8 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-DB_PATH          = os.getenv("DB_PATH", "data/atlas.duckdb")
+_ROOT   = Path(__file__).resolve().parents[2]
+DB_PATH = str(_ROOT / "data" / "atlas.duckdb")
 ALERT_THRESHOLD  = 0.10   # 10% change triggers alert
 
 KPI_COLS = [

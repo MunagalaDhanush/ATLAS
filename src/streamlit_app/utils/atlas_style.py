@@ -17,6 +17,13 @@ header {visibility: hidden;}
 .stDeployButton {visibility: hidden;}
 .stAppToolbar {display: none;}
 
+/* Sidebar toggle must remain visible despite header being hidden */
+[data-testid="collapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    color: #4DA6FF !important;
+}
+
 /* Page background */
 .stApp { background-color: #0A0F1E; }
 

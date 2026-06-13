@@ -7,7 +7,6 @@ Creates data/atlas.duckdb and populates:
 Connection: duckdb.connect(DB_PATH)  — no account, warehouse, or cloud needed.
 """
 
-import os
 import sys
 import logging
 from pathlib import Path
@@ -24,7 +23,8 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "data/atlas.duckdb")
+_ROOT   = Path(__file__).resolve().parents[2]
+DB_PATH = str(_ROOT / "data" / "atlas.duckdb")
 
 
 # ── Schema creation ────────────────────────────────────────────────────────────
