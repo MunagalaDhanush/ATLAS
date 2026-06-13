@@ -1,0 +1,25 @@
+# ATLAS — Python dependencies
+
+# Phase 1: Synthetic Data Generation
+pandas>=2.0.0
+numpy>=1.24.0
+faker>=19.0.0
+python-dotenv>=1.0.0
+
+# Phase 2: ETL (DuckDB replaces Snowflake for local dev)
+duckdb>=0.9.0
+snowflake-connector-python>=3.5.0
+snowflake-sqlalchemy>=1.5.0
+sqlalchemy>=2.0.0
+
+# Phase 2: Airflow orchestration
+apache-airflow>=2.8.0
+
+# Phase 3: Journey stitcher + friction detector
+scipy>=1.11.0
+
+# Phase 4: LLM Insight Engine
+groq>=0.9.0
+
+# Phase 5: KPI Monitor + Friction Scoring
+statsmodels>=0.14.0
