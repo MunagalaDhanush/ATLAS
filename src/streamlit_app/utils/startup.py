@@ -1,6 +1,5 @@
 """
-ATLAS startup guard — checks for atlas.duckdb and runs the full pipeline if absent.
-Called once at Home.py startup before any page renders.
+ATLAS startup guard — diagnostic version with verbose logging.
 """
 
 
@@ -8,89 +7,100 @@ def ensure_data_ready():
     import duckdb
     import streamlit as st
     from pathlib import Path
+    import os, sys
 
     root = Path(__file__).resolve().parents[3]
     db_path = root / "data" / "atlas.duckdb"
 
+    # Log environment for debugging
+    st.write(f"DEBUG: root = {root}")
+    st.write(f"DEBUG: db_path = {db_path}")
+    st.write(f"DEBUG: db exists = {db_path.exists()}")
+    st.write(f"DEBUG: cwd = {os.getcwd()}")
+
+    # Write permission check
+    test_file = root / "data" / "test_write.txt"
+    try:
+        test_file.write_text("test")
+        test_file.unlink()
+        st.write("DEBUG: Write permission OK")
+    except Exception as e:
+        st.write(f"DEBUG: NO WRITE PERMISSION - {e}")
+
     needs_setup = False
     if not db_path.exists():
+        st.write("DEBUG: DB does not exist - running pipeline")
         needs_setup = True
     else:
+        st.write("DEBUG: DB exists - checking tables")
         try:
             con = duckdb.connect(str(db_path))
-            count = con.execute(
-                "SELECT COUNT(*) FROM analytics.friction_hotspots"
-            ).fetchone()[0]
-            con.close()
-            if count == 0:
+            tables = con.execute("SHOW ALL TABLES").df()
+            st.write(f"DEBUG: Tables found: {tables['name'].tolist()}")
+            try:
+                count = con.execute(
+                    "SELECT COUNT(*) FROM analytics.friction_hotspots"
+                ).fetchone()[0]
+                st.write(f"DEBUG: friction_hotspots count = {count}")
+                if count == 0:
+                    needs_setup = True
+            except Exception as e:
+                st.write(f"DEBUG: friction_hotspots error = {e}")
                 needs_setup = True
-        except Exception:
+            con.close()
+        except Exception as e:
+            st.write(f"DEBUG: DB connection error = {e}")
             needs_setup = True
 
     if not needs_setup:
+        st.write("DEBUG: Data ready - skipping pipeline")
         return
 
-    with st.spinner(
-        "First run: building ATLAS data pipeline. "
-        "Takes about 90 seconds..."
-    ):
-        import sys
-        import os
-
-        # Set working directory to project root for all scripts
+    with st.spinner("Building pipeline..."):
         original_dir = os.getcwd()
         os.chdir(str(root))
         sys.path.insert(0, str(root))
 
-        # Create directories
         (root / "data" / "raw").mkdir(parents=True, exist_ok=True)
         (root / "data" / "processed").mkdir(parents=True, exist_ok=True)
         (root / "data" / "dashboard").mkdir(parents=True, exist_ok=True)
 
-        try:
+        def run_module(path, label):
             import importlib.util
-
-            def run_module(path):
+            st.write(f"Running: {label}")
+            try:
                 spec = importlib.util.spec_from_file_location(
                     "module", str(root / path)
                 )
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
+                st.write(f"OK: {label}")
+            except Exception as e:
+                st.write(f"FAILED: {label} -- {e}")
+                raise
 
-            st.write("Generating synthetic data...")
-            run_module("generate_synthetic_data.py")
+        try:
+            run_module("generate_synthetic_data.py", "Synthetic data")
 
-            st.write("Running ETL pipeline...")
-            run_module("src/02_etl_pipeline/load_duckdb.py")
+            csv_count = len(list((root / "data" / "raw").glob("*.csv")))
+            st.write(f"DEBUG: CSVs in data/raw = {csv_count}")
 
-            st.write("Building customer journeys...")
-            run_module("src/03_journey_stitcher/journey_stitcher.py")
-
-            st.write("Detecting friction episodes...")
-            run_module("src/04_friction_detector/friction_detector.py")
-
-            st.write("Aggregating KPIs...")
-            run_module("src/06_kpi_monitor/kpi_aggregator.py")
-
-            st.write("Running ARIMA forecasts...")
-            run_module("src/06_kpi_monitor/kpi_arima_monitor.py")
-
-            st.write("Scoring friction hotspots...")
-            run_module("src/07_friction_scoring/friction_scorer.py")
-
-            st.write("Preparing dashboard data...")
-            run_module("src/10_dashboard/export_for_powerbi.py")
-
-            # Skip real Groq on cold start — saves API quota
+            run_module("src/02_etl_pipeline/load_duckdb.py", "ETL")
+            run_module("src/03_journey_stitcher/journey_stitcher.py", "Journeys")
+            run_module("src/04_friction_detector/friction_detector.py", "Friction")
+            run_module("src/06_kpi_monitor/kpi_aggregator.py", "KPI aggregator")
+            run_module("src/06_kpi_monitor/kpi_arima_monitor.py", "ARIMA")
+            run_module("src/07_friction_scoring/friction_scorer.py", "Scoring")
+            run_module("src/10_dashboard/export_for_powerbi.py", "Dashboard export")
             _create_llm_fallback(str(db_path))
-
+            st.write("Pipeline complete")
         except Exception as e:
-            st.error(f"Pipeline error: {e}")
-            raise
+            st.error(f"Pipeline failed: {e}")
+            import traceback
+            st.code(traceback.format_exc())
         finally:
             os.chdir(original_dir)
 
-    st.success("ATLAS ready.")
     st.rerun()
 
 
