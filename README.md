@@ -277,7 +277,12 @@ python src/10_dashboard/export_for_powerbi.py
 
 ## Dashboard Preview
 
-*[Add Power BI screenshot after building the dashboard — see `data/dashboard/POWERBI_SETUP.md` for build instructions]*
+<img width="1920" height="1080" alt="Screenshot (36)" src="https://github.com/user-attachments/assets/fed56d5c-e970-40f1-826c-1b00b4f9320b" />
+<img width="1629" height="562" alt="Priority Score Charts" src="https://github.com/user-attachments/assets/14c83a2f-b804-420f-b81c-1c0e2dda64f1" />
+<img width="1634" height="748" alt="LLM Insights" src="https://github.com/user-attachments/assets/776c4530-9909-49e1-be8b-7267f32f0b2c" />
+<img width="1636" height="829" alt="Individual KPI Trends" src="https://github.com/user-attachments/assets/5a6383d6-0550-4b29-85cd-f08cf1f9abdd" />
+<img width="1635" height="522" alt="Dashboard__KPI Trends" src="https://github.com/user-attachments/assets/cdbbd3c6-9f2e-4cb4-be16-982bead78e61" />
+
 
 ---
 
