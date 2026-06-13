@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 
 def _con() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(_DB_PATH), read_only=True)
+    return duckdb.connect(str(_DB_PATH))
 
 
 # ── KPI weekly summary ────────────────────────────────────────────────────────

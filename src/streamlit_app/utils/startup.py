@@ -94,6 +94,19 @@ def ensure_data_ready():
             run_module("src/10_dashboard/export_for_powerbi.py", "Dashboard export")
             _create_llm_fallback(str(db_path))
             st.write("Pipeline complete")
+
+            # Post-pipeline verification
+            con = duckdb.connect(str(db_path))
+            try:
+                tables = con.execute("SHOW ALL TABLES").df()
+                st.write(f"DEBUG: Final tables = {tables['name'].tolist()}")
+                hs_count = con.execute(
+                    "SELECT COUNT(*) FROM analytics.friction_hotspots"
+                ).fetchone()[0]
+                st.write(f"DEBUG: friction_hotspots rows = {hs_count}")
+            finally:
+                con.close()
+
         except Exception as e:
             st.error(f"Pipeline failed: {e}")
             import traceback

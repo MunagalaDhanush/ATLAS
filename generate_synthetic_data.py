@@ -46,7 +46,9 @@ CHANNEL_TARGETS = {
 
 END_DATE   = datetime.now().replace(microsecond=0)
 START_DATE = END_DATE - timedelta(days=182)
-OUTPUT_DIR = Path("data/raw")
+
+_ROOT      = Path(__file__).resolve().parent   # ATLAS root
+OUTPUT_DIR = _ROOT / "data" / "raw"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Text Pools ─────────────────────────────────────────────────────────────────
