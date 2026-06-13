@@ -18,23 +18,27 @@ header [data-testid="stToolbar"] {visibility: hidden;}
 .stDeployButton {visibility: hidden;}
 .stAppToolbar {display: none;}
 
-/* Sidebar toggle must remain visible despite header being hidden */
-[data-testid="collapsedControl"] {
+/* Force sidebar always open - non-collapsible */
+[data-testid="stSidebar"] {
+    transform: none !important;
+    width: 240px !important;
+    min-width: 240px !important;
     visibility: visible !important;
-    opacity: 1 !important;
     display: flex !important;
-    background: #0D1526 !important;
-    border: 1px solid rgba(77,166,255,0.3) !important;
-    border-radius: 0 8px 8px 0 !important;
 }
-[data-testid="collapsedControl"] button {
-    visibility: visible !important;
-    opacity: 1 !important;
-    color: #4DA6FF !important;
+
+/* Hide the collapse/expand toggle button entirely */
+[data-testid="collapsedControl"] {
+    display: none !important;
 }
-[data-testid="collapsedControl"] svg {
-    visibility: visible !important;
-    fill: #4DA6FF !important;
+
+button[kind="header"] {
+    display: none !important;
+}
+
+/* Hide the sidebar close button inside the sidebar */
+[data-testid="stSidebar"] button {
+    display: none !important;
 }
 
 /* Page background */
